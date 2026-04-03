@@ -1,0 +1,61 @@
+{
+	"name": "cloudflare-ddns",
+	"description": "Cloudflare Worker that acts as a DDNS provider for Synology NAS and other clients.",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22",
+		"pnpm": ">=9"
+	},
+	"dependencies": {
+		"@clack/prompts": "^1.2.0",
+		"chanfana": "^3.3.0",
+		"cloudflare": "^5.2.0",
+		"hono": "4.12.10",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "0.14.1",
+		"@types/node": "25.5.0",
+		"typescript": "6.0.2",
+		"vitest": "4.1.2",
+		"wrangler": "4.80.0"
+	},
+	"scripts": {
+		"cf-typegen": "wrangler types",
+		"prepare:deploy-config": "node --experimental-strip-types ./scripts/prepare-deploy-config.ts",
+		"prepare:deploy-config:require-d1-id": "node --experimental-strip-types ./scripts/prepare-deploy-config.ts --require-d1-database-id",
+		"setup:db": "node --experimental-strip-types ./scripts/setup-db.ts",
+		"setup:secrets": "node --experimental-strip-types ./scripts/setup-secrets.ts",
+		"typecheck:scripts": "tsc -p tsconfig.scripts.json",
+		"deploy": "pnpm run prepare:deploy-config && wrangler deploy",
+		"migrate:remote": "pnpm run prepare:deploy-config:require-d1-id && wrangler d1 migrations apply DB --remote",
+		"dev": "pnpm run prepare:deploy-config && wrangler d1 migrations apply DB --local && wrangler dev",
+		"test": "pnpm run prepare:deploy-config && wrangler deploy --dry-run && npx vitest run --config tests/vitest.config.mts"
+	},
+	"cloudflare": {
+		"bindings": {
+			"CF_API_TOKEN": {
+				"description": "Cloudflare API token with Zone > DNS > Edit permission for the zone this worker will update. In the Cloudflare dashboard, start from the Edit Zone DNS template, which grants zone-scoped DNS Write access."
+			},
+			"CF_ZONE_ID": {
+				"description": "Zone ID from your domain Overview page in the Cloudflare dashboard. Cloudflare shows it in the API section on the right side."
+			},
+			"DDNS_SHARED_SECRET": {
+				"description": "Long random password used by Synology or other clients to authenticate update requests. Use at least 32 random characters."
+			},
+			"DDNS_ALLOWED_HOSTNAMES": {
+				"description": "Comma-separated allowlist of DNS names this worker may update, for example `nas.example.com,*.nas.example.com`."
+			},
+			"DDNS_PROXIED": {
+				"description": "Set to false for most NAS setups. Use true only if you want the updated records proxied through Cloudflare."
+			},
+			"DDNS_TTL": {
+				"description": "Use 1 for automatic TTL, or a value from 60 to 86400 seconds."
+			},
+			"DDNS_LOG_RETENTION_DAYS": {
+				"description": "How many days of update logs to keep in D1 before scheduled cleanup removes them."
+			}
+		}
+	}
+}

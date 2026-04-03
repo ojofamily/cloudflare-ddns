@@ -1,0 +1,47 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "cloudflare-ddns",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-04-01",
+	"upload_source_maps": true,
+	"observability": {
+		"enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 1
+    }
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "cloudflare-ddns-db","database_id": "05ce1679-df44-4a6b-a6d9-1642d98fa9ec"
+		}
+	],
+	"secrets": {
+		"required": [
+			"CF_API_TOKEN",
+			"CF_ZONE_ID",
+			"DDNS_SHARED_SECRET"
+		]
+	},
+	"vars": {
+		"DDNS_PROXIED": "false",
+		"DDNS_TTL": "1",
+		"DDNS_LOG_RETENTION_DAYS": "30",
+		"DDNS_RATE_LIMIT_MAX_REQUESTS": "10",
+		"DDNS_RATE_LIMIT_WINDOW_SECONDS": "60"
+	},
+	"triggers": {
+		"crons": [
+			"0 */6 * * *"
+		]
+	}
+}

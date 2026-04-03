@@ -1,0 +1,277 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cloudflare DDNS",
+    "version": "1.0.0",
+    "description": "A Cloudflare Worker that acts as a DDNS provider. Synology NAS devices (and other clients) call this service to keep DNS records in sync with a changing public IP address."
+  },
+  "components": {
+    "schemas": {},
+    "parameters": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health check",
+        "operationId": "get_HealthEndpoint",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nic/update": {
+      "get": {
+        "tags": [
+          "DDNS"
+        ],
+        "summary": "Synology DynDNS2 update endpoint",
+        "description": "Plain-text DynDNS2-compatible endpoint for Synology DSM and similar clients. Returns text/plain responses such as `good <ip>`, `nochg <ip>`, `badauth`, `nohost`, or `911`.",
+        "operationId": "get_SynologyUpdateEndpoint",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "description": "Fully-qualified hostname to update, for example nas.example.com."
+            },
+            "required": false,
+            "description": "Fully-qualified hostname to update, for example nas.example.com.",
+            "name": "hostname",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "description": "Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP."
+            },
+            "required": false,
+            "description": "Client-supplied IPv4 or IPv6 address. Invalid values are ignored in favor of CF-Connecting-IP.",
+            "name": "myip",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "description": "Unused by this worker, but included for Synology DynDNS2 compatibility."
+            },
+            "required": false,
+            "description": "Unused by this worker, but included for Synology DynDNS2 compatibility.",
+            "name": "username",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "nullable": true,
+              "description": "Shared secret used to authenticate the update request."
+            },
+            "required": false,
+            "description": "Shared secret used to authenticate the update request.",
+            "name": "password",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DynDNS2 plain-text status response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server-side error returned as DynDNS2 status text",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/update": {
+      "post": {
+        "tags": [
+          "DDNS"
+        ],
+        "summary": "Update a DNS record with the caller's current IP",
+        "description": "Authenticate with X-DDNS-Secret header. Optionally provide hostname and ip in the JSON body; omitted values are inferred from config and the request's CF-Connecting-IP header.",
+        "operationId": "post_UpdateEndpoint",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Shared secret for authentication"
+            },
+            "required": true,
+            "description": "Shared secret for authentication",
+            "name": "X-DDNS-Secret",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hostname": {
+                    "type": "string"
+                  },
+                  "ip": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DNS record update result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "action": {
+                      "type": "string"
+                    },
+                    "hostname": {
+                      "type": "string"
+                    },
+                    "record_type": {
+                      "type": "string"
+                    },
+                    "ip": {
+                      "type": "string"
+                    },
+                    "record_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "action",
+                    "hostname",
+                    "record_type",
+                    "ip"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (missing IP or invalid hostname)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "number"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "number"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "message"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}
